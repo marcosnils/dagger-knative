@@ -2,6 +2,7 @@ package function
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -35,17 +36,35 @@ type GameScore struct {
 
 var redisHost = os.Getenv("REDIS_HOST") // This should include the port which is most of the time 6379
 var redisPassword = os.Getenv("REDIS_PASSWORD")
+var redisTLSEnabled = os.Getenv("REDIS_TLS")
 var gameEventingEnabled = os.Getenv("GAME_EVENTING_ENABLED")
 var sink = os.Getenv("GAME_EVENTING_BROKER_URI")
 var cloudEventsEnabled bool = false
+var redisTLSEnabledFlag = false
 
 // Handle an HTTP Request.
 func Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     redisHost,
-		Password: redisPassword,
-		DB:       0,
-	})
+	if redisTLSEnabled != "" && redisTLSEnabled != "false" {
+		redisTLSEnabledFlag = true
+	}
+	var client *redis.Client
+
+	if !redisTLSEnabledFlag {
+		client = redis.NewClient(&redis.Options{
+			Addr:     redisHost,
+			Password: redisPassword,
+			DB:       0,
+		})
+	} else {
+		client = redis.NewClient(&redis.Options{
+			Addr:     redisHost,
+			Password: redisPassword,
+			DB:       0,
+			TLSConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+		})
+	}
 
 	points := 0
 	var answers Answers
