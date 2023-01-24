@@ -1,1 +1,1 @@
-base: salaboy/gitpod-func
+base: salaboy/gitpod-func:latest
