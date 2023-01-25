@@ -1,1 +1,5 @@
 image: salaboy/gitpod-func:latest
+tasks: 
+ env: 
+ - name: DOCKERD_ARGS
+   value: { "remap-user": "1000" }
