@@ -1,2 +1,1 @@
 image: salaboy/gitpod-func:latest
-experimentalNetwork: true
