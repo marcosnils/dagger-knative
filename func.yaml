@@ -1,35 +1,31 @@
-version: 0.19.0
+specVersion: 0.35.0
 name: kubeconeu-question-5
-namespace: ""
 runtime: go
 registry: ""
 image: docker.io/salaboy/kubeconeu-question-5:latest
 imageDigest: sha256:c8f4d6a976b6a62ce2967367b53df23f52f952e69c1f7cf1bf517d8de926678e
-build: local
-git: {}
-builder: gcr.io/paketo-buildpacks/builder:base
-builders:
-  base: gcr.io/paketo-buildpacks/builder:base
-  default: gcr.io/paketo-buildpacks/builder:base
-  full: gcr.io/paketo-buildpacks/builder:full
-buildpacks:
-- paketo-buildpacks/go-dist
-- ghcr.io/boson-project/go-function-buildpack:tip
-volumes: []
-buildEnvs: []
-envs:
-- name: REDIS_HOST
-  value: 10.200.130.188:6379
-- name: GAME_EVENTING_ENABLED
-  value: "true"
-- name: GAME_EVENTING_BROKER_URI
-  value: http://broker-ingress.knative-eventing.svc.cluster.local/default/default
-annotations: {}
-options: {}
-labels: []
-healthEndpoints:
-  liveness: /health/liveness
-  readiness: /health/readiness
 created: 2022-05-02T08:17:12.869606+01:00
-invocation:
-  format: http
+build:
+  buildpacks:
+  - paketo-buildpacks/go-dist
+  - ghcr.io/boson-project/go-function-buildpack:tip
+  builder: pack
+  buildEnvs: []
+run:
+  volumes: []
+  envs:
+  - name: REDIS_HOST
+    value: 10.200.130.188:6379
+  - name: GAME_EVENTING_ENABLED
+    value: "true"
+  - name: GAME_EVENTING_BROKER_URI
+    value: http://broker-ingress.knative-eventing.svc.cluster.local/default/default
+deploy:
+  namespace: ""
+  remote: false
+  annotations: {}
+  options: {}
+  labels: []
+  healthEndpoints:
+    liveness: /health/liveness
+    readiness: /health/readiness

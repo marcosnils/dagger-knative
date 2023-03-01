@@ -5,42 +5,43 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/go-redis/redis"
-	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/go-redis/redis"
+	"github.com/google/uuid"
 )
 
-
 type Answers struct {
-	Player string `json:"player"`
-	SessionId string `json:"sessionId"`
-	OptionA bool `json:"optionA"`
-	OptionB bool `json:"optionB"`
-	OptionC bool `json:"optionC"`
-	OptionD bool `json:"optionD"`
-	RemainingTime int `json:"remainingTime"`
+	Player        string `json:"player"`
+	SessionId     string `json:"sessionId"`
+	OptionA       bool   `json:"optionA"`
+	OptionB       bool   `json:"optionB"`
+	OptionC       bool   `json:"optionC"`
+	OptionD       bool   `json:"optionD"`
+	RemainingTime int    `json:"remainingTime"`
 }
 
 type GameScore struct {
-	Player string
-	SessionId string
-	Time      time.Time
-	Level     string
+	Player     string
+	SessionId  string
+	Time       time.Time
+	Level      string
 	LevelScore int
 }
 
-
-var redisHost = os.Getenv("REDIS_HOST") // This should include the port which is most of the time 6379
-var redisPassword = os.Getenv("REDIS_PASSWORD")
-var redisTLSEnabled = os.Getenv("REDIS_TLS")
-var gameEventingEnabled = os.Getenv("GAME_EVENTING_ENABLED")
-var sink = os.Getenv("GAME_EVENTING_BROKER_URI")
-var cloudEventsEnabled bool = false
-var redisTLSEnabledFlag = false
+var (
+	redisHost                = os.Getenv("REDIS_HOST") // This should include the port which is most of the time 6379
+	redisPassword            = os.Getenv("REDIS_PASSWORD")
+	redisTLSEnabled          = os.Getenv("REDIS_TLS")
+	gameEventingEnabled      = os.Getenv("GAME_EVENTING_ENABLED")
+	sink                     = os.Getenv("GAME_EVENTING_BROKER_URI")
+	cloudEventsEnabled  bool = false
+	redisTLSEnabledFlag      = false
+)
 
 // Handle an HTTP Request.
 func Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
@@ -69,7 +70,7 @@ func Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	points := 0
 	var answers Answers
 
-	if gameEventingEnabled != "" && gameEventingEnabled != "false"{
+	if gameEventingEnabled != "" && gameEventingEnabled != "false" {
 		cloudEventsEnabled = true
 	}
 
@@ -82,10 +83,10 @@ func Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	}
 
 	if answers.OptionA == true {
-		points =  0
+		points = 0
 	}
 	if answers.OptionB == true {
-		points= 0
+		points = 0
 	}
 	if answers.OptionC == true {
 		points = 5
@@ -96,19 +97,19 @@ func Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 
 	points += answers.RemainingTime
 
-	score := GameScore {
-		Player:  answers.Player,
-		SessionId: answers.SessionId,
-		Level: "kubeconeu-question-5",
+	score := GameScore{
+		Player:     answers.Player,
+		SessionId:  answers.SessionId,
+		Level:      "kubeconeu-question-5",
 		LevelScore: points,
-		Time: time.Now(),
+		Time:       time.Now(),
 	}
 	scoreJson, err := json.Marshal(score)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = client.RPush("score-" + answers.SessionId, string(scoreJson)).Err()
+	err = client.RPush("score-"+answers.SessionId, string(scoreJson)).Err()
 	// if there has been an error setting the value
 	// handle the error
 	if err != nil {
