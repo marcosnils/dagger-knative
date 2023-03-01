@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"dagger.io/dagger"
+	"gopkg.in/yaml.v3"
 )
 
 func main() {
@@ -20,16 +21,18 @@ func main() {
 	}
 
 	switch os.Args[1] {
-	case "scan":
+	case "scan-local":
 
-		err = scan(ctx)
+		err = scan(ctx, "dir:.")
+
 	case "build":
-
 		err = build(ctx)
 
 	case "package":
-
 		err = pkg(ctx)
+
+	case "push":
+		err = push(ctx)
 
 	default:
 		log.Fatalln("invalid command specified")
@@ -38,6 +41,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func push(ctx context.Context) error {
+	if err := pkg(ctx); err != nil {
+		return err
+	}
+
+	c := getDaggerClient(ctx)
+
+	defer c.Close()
+
+	fi := getFuncImage()
+
+	digest, err := c.Container().From(fi).Publish(ctx, fi)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("image pushed to:", digest)
+
+	return nil
 }
 
 func pkg(ctx context.Context) error {
@@ -58,10 +82,16 @@ func pkg(ctx context.Context) error {
 		return err
 	}
 
+	fi := getFuncImage()
+
+	err = scan(ctx, fi)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func scan(ctx context.Context) error {
+func scan(ctx context.Context, source string) error {
 	c := getDaggerClient(ctx)
 	defer c.Close()
 
@@ -71,11 +101,14 @@ func scan(ctx context.Context) error {
 		Exclude: []string{"ci"},
 	})
 
+	dockerSock := c.Host().UnixSocket("/var/run/docker.sock")
+
 	_, err := c.Container().From("anchore/grype").
+		WithUnixSocket("/var/run/docker.sock", dockerSock).
 		WithMountedCache("/.cache", scanCache).
 		WithMountedDirectory("/app", appDir).
 		WithWorkdir("/app").
-		WithExec([]string{"dir:.", "--output", "sarif", "--file", "results.sarif"}).
+		WithExec([]string{source, "--output", "sarif", "--file", "results.sarif"}).
 		File("results.sarif").Export(ctx, "results.sarif")
 	if err != nil {
 		return err
@@ -123,4 +156,26 @@ func getDaggerClient(ctx context.Context) *dagger.Client {
 	}
 
 	return c
+}
+
+func getFuncImage() string {
+	f, err := ioutil.ReadFile("func.yaml")
+	if err != nil {
+		panic(err)
+	}
+
+	var fs struct {
+		Image string `yaml:"image"`
+	}
+	err = yaml.Unmarshal(f, &fs)
+	if err != nil {
+		panic(err)
+	}
+
+	// TODO: validate image has the correct format
+	if len(fs.Image) == 0 {
+		log.Fatalf("empty image in func.yaml")
+	}
+
+	return fs.Image
 }
